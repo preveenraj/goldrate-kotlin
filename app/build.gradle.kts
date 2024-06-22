@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.goldrate"
+    namespace = "com.techrush_app.goldrate"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.goldrate"
+        applicationId = "com.techrush_app.goldrate"
         minSdk = 24
         targetSdk = 34
         versionCode = 1
