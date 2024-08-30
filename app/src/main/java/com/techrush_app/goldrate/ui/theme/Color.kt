@@ -3,8 +3,8 @@ package com.techrush_app.goldrate.ui.theme
 import androidx.compose.ui.graphics.Color
 
 val Black = Color(0xFF000000)
+val DarkBlue = Color(0xFF273161)
 val Yellow = Color(0xFFFFD700)
-val DarkBlue = Color(0xFF121732)
 val LightBlue = Color(0xFF6C97C2)
 val OffWhite = Color(0xFFD3D3D3)
 
