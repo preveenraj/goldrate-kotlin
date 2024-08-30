@@ -1,6 +1,7 @@
 package com.techrush_app.goldrate
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -41,8 +42,9 @@ import java.util.Locale
 import it.skrape.core.*
 import it.skrape.fetcher.*
 import it.skrape.selects.html5.table
+import java.util.Date
 
-data class Result(val rateString: String, val dateString: String)
+data class Result(val rateString: String, val dateString: String, val dayStatus: String)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -91,7 +93,7 @@ class MainActivity : ComponentActivity() {
                 .fillMaxSize()
             ) {
                 val data = fetchData()
-                DateContainer(date = data.dateString)
+                DateContainer(date = data.dateString, dayStatus = data.dayStatus)
                 Column (
                     verticalArrangement = Arrangement.Center,
                     modifier = Modifier
@@ -116,7 +118,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun DateContainer(date: String) {
+    private fun DateContainer(date: String, dayStatus: String) {
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -132,6 +134,11 @@ class MainActivity : ComponentActivity() {
                 modifier = Modifier
                     .width(220.dp)
                     .padding(vertical = 12.dp)
+            )
+            Text(
+                text = dayStatus,
+                color = Color.White,
+                fontSize = 24.sp
             )
         }
     }
@@ -184,6 +191,22 @@ class MainActivity : ComponentActivity() {
 
     }
 
+    private fun getDayStatus(dateString: String): String {
+        val dateFormat = SimpleDateFormat("dd-MMM-yy", Locale.getDefault())
+        val date = dateFormat.parse(dateString)
+        val currentDate = Date()
+
+        val diffInDays = ((currentDate.time - date.time) / (1000 * 60 * 60 * 24)).toInt()
+        Log.d("diffInDays", diffInDays.toString())
+
+        return when (diffInDays) {
+            0 -> "Today"
+            1 -> "Yesterday"
+            in 2..7 -> "Last Week"
+            else -> "Long Ago"
+        }
+    }
+
     private fun fetchData(): Result {
         val time = SimpleDateFormat("HHmm", Locale.getDefault()).format(Calendar.getInstance().time)
         val timeint = time.toInt()
@@ -210,7 +233,8 @@ class MainActivity : ComponentActivity() {
                             var dateString = tableString.substring(tableString.lastIndexOf("Today") - 40, tableString.lastIndexOf("Today") - 1).trim()
                             dateString = dateString.substring(dateString.indexOf("-") - 2, dateString.lastIndexOf("-") + 3)
 
-                            val result = Result(rateString, dateString)
+                            val dayStatus = getDayStatus(dateString)
+                            val result = Result(rateString, dateString, dayStatus)
                             result
                         }
                     }
