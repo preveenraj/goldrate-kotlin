@@ -90,7 +90,6 @@ public fun Container() {
                 verticalArrangement = Arrangement.Center,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(start = 24.dp)
             ) {
                 PriceContainer(
                     type = "Gram",

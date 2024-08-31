@@ -2,5 +2,6 @@
 <resources>
 
     <style name="Theme.GoldRate" parent="android:Theme.Material.Light.NoActionBar" >
+        <item name="android:windowBackground">@color/black</item>"
     </style>
 </resources>
