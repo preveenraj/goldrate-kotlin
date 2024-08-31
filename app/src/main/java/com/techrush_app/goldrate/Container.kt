@@ -10,6 +10,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -53,35 +58,40 @@ fun Container() {
             .fillMaxSize()
         ) {
             val isPreview = LocalInspectionMode.current
+            var data by remember { mutableStateOf<Result?>(null) }
 
-            val data: Result = when (isPreview) {
+            when (isPreview) {
                 true -> {
-                    Result("5656", "31-Jan-24", "Today")
+                    data = Result("5656", "31-Jan-24", "Today")
                 }
-
                 false -> {
-                    fetchData()
+                    LaunchedEffect(Unit) {
+                        data = fetchData()
+                    }
                 }
             }
-            DateContainer(date = data.dateString, dayStatus = data.dayStatus)
-            Column (
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier
-                    .fillMaxSize()
-            ) {
-                PriceContainer(
-                    type = "Gram",
-                    price = data.rateString,
-                    isLarge = true,
-                )
-                Spacer(modifier = Modifier
-                    .height(24.dp)
-                )
-                PriceContainer(
-                    type = "Pavan",
-                    price = (data.rateString.toInt() * 8).toString(),
-                    isLarge = false,
-                )
+
+            data?.let {
+                DateContainer(date = data!!.dateString, dayStatus = data!!.dayStatus)
+                Column (
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier
+                        .fillMaxSize()
+                ) {
+                    PriceContainer(
+                        type = "Gram",
+                        price = data!!.rateString,
+                        isLarge = true,
+                    )
+                    Spacer(modifier = Modifier
+                        .height(24.dp)
+                    )
+                    PriceContainer(
+                        type = "Pavan",
+                        price = (data!!.rateString.toInt() * 8).toString(),
+                        isLarge = false,
+                    )
+                }
             }
         }
     }

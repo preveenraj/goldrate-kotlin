@@ -1,24 +1,27 @@
 package com.techrush_app.goldrate
 
 import android.util.Log
-import androidx.compose.ui.platform.LocalInspectionMode
 import it.skrape.core.htmlDocument
 import it.skrape.fetcher.HttpFetcher
 import it.skrape.fetcher.response
 import it.skrape.fetcher.skrape
 import it.skrape.selects.html5.table
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-public fun getDayStatus(dateString: String): String {
+fun getDayStatus(dateString: String): String {
     val dateFormat = SimpleDateFormat("dd-MMM-yy", Locale.getDefault())
     val date = dateFormat.parse(dateString)
     val currentDate = Date()
+    var diffInDays = 9999
 
-    val diffInDays = ((currentDate.time - date.time) / (1000 * 60 * 60 * 24)).toInt()
-    Log.d("diffInDays", diffInDays.toString())
+    date?.let {
+        diffInDays = ((currentDate.time - date.time) / (1000 * 60 * 60 * 24)).toInt()
+        Log.d("diffInDays", diffInDays.toString())
+    }
 
     return when (diffInDays) {
         0 -> "Today"
@@ -28,9 +31,9 @@ public fun getDayStatus(dateString: String): String {
     }
 }
 
-public fun fetchData(): Result {
-    val time = SimpleDateFormat("HHmm", Locale.getDefault()).format(Calendar.getInstance().time)
-    val timeint = time.toInt()
+suspend fun fetchData(): Result = withContext(Dispatchers.IO) {
+//    val time = SimpleDateFormat("HHmm", Locale.getDefault()).format(Calendar.getInstance().time)
+//    val timeint = time.toInt()
     val result: Result = skrape(HttpFetcher) {
         // perform a GET request to the specified URL
         request {
@@ -61,5 +64,5 @@ public fun fetchData(): Result {
             }
         }
     }
-    return result
+    result
 }
