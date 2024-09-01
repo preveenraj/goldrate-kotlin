@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -70,27 +72,40 @@ fun Container() {
                     }
                 }
             }
-
-            data?.let {
-                DateContainer(date = data!!.dateString, dayStatus = data!!.dayStatus)
-                Column (
-                    verticalArrangement = Arrangement.Center,
-                    modifier = Modifier
-                        .fillMaxSize()
-                ) {
-                    PriceContainer(
-                        type = "Gram",
-                        price = data!!.rateString,
-                        isLarge = true,
-                    )
-                    Spacer(modifier = Modifier
-                        .height(24.dp)
-                    )
-                    PriceContainer(
-                        type = "Pavan",
-                        price = (data!!.rateString.toInt() * 8).toString(),
-                        isLarge = false,
-                    )
+            when (data) {
+                null -> {
+                    Box (
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .fillMaxSize()
+                    ) {
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .padding(24.dp)
+                        )
+                    }
+                }
+                else -> {
+                    DateContainer(date = data!!.dateString, dayStatus = data!!.dayStatus)
+                    Column (
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier
+                            .fillMaxSize()
+                    ) {
+                        PriceContainer(
+                            type = "Gram",
+                            price = data!!.rateString,
+                            isLarge = true,
+                        )
+                        Spacer(modifier = Modifier
+                            .height(24.dp)
+                        )
+                        PriceContainer(
+                            type = "Pavan",
+                            price = (data!!.rateString.toIntOrNull() ?: 0 * 8).toString(),
+                            isLarge = false,
+                        )
+                    }
                 }
             }
         }
