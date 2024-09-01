@@ -13,14 +13,18 @@ import java.util.Date
 import java.util.Locale
 
 fun getDayStatus(dateString: String): String {
-    val dateFormat = SimpleDateFormat("dd-MMM-yy", Locale.getDefault())
-    val date = dateFormat.parse(dateString)
-    val currentDate = Date()
     var diffInDays = 9999
+    try {
+        val dateFormat = SimpleDateFormat("dd-MMM-yy", Locale.getDefault())
+        val date = dateFormat.parse(dateString)
+        val currentDate = Date()
 
-    date?.let {
-        diffInDays = ((currentDate.time - date.time) / (1000 * 60 * 60 * 24)).toInt()
-        Log.d("diffInDays", diffInDays.toString())
+        date?.let {
+            diffInDays = ((currentDate.time - date.time) / (1000 * 60 * 60 * 24)).toInt()
+            Log.d("diffInDays", diffInDays.toString())
+        }
+    } catch (e: Exception) {
+        Log.d("Exception while parsing date", e.toString())
     }
 
     return when (diffInDays) {
@@ -55,9 +59,13 @@ suspend fun fetchData(): Result = withContext(Dispatchers.IO) {
 
                         var dateString = tableString.substring(tableString.lastIndexOf("Today") - 40, tableString.lastIndexOf("Today") - 1).trim()
                         dateString = dateString.substring(dateString.indexOf("-") - 2, dateString.lastIndexOf("-") + 3)
-
-                        val dayStatus = getDayStatus(dateString)
-                        val result = Result(rateString, dateString, dayStatus)
+                        val formattedDateString = if (dateString[0] == '>') {
+                            dateString.substring(1)
+                        } else {
+                            dateString
+                        }
+                        val dayStatus = getDayStatus(formattedDateString)
+                        val result = Result(rateString, formattedDateString, dayStatus)
                         result
                     }
                 }
