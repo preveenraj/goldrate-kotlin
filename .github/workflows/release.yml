@@ -50,8 +50,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.goldrate_release_token }}
         with:
-          tag_name: ${LATEST_TAG}
-          release_name: Release v${LATEST_TAG}
+          tag_name: ${{ env.LATEST_TAG }}
+          release_name: Release v${{ env.LATEST_TAG }}
           body: |
             Changes in this release:
               - First Change
