@@ -51,7 +51,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.goldrate_release_token }}
         with:
           tag_name: ${LATEST_TAG}
-          release_name: Release ${{ github.ref }}
+          release_name: Release v${LATEST_TAG}
           body: |
             Changes in this release:
               - First Change
