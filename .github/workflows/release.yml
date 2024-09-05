@@ -31,9 +31,13 @@ jobs:
         run: git tag v3.1.2
 
       - name: Push Tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.goldrate_release_token }}
         run: git push origin --tags
 
       - name: Fetch Latest Tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.goldrate_release_token }}
         id: get_latest_tag
         run: |
           git fetch --tags
