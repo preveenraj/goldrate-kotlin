@@ -15,7 +15,7 @@ import java.util.Locale
 fun getDayStatus(dateString: String): String {
     var diffInDays = 9999
     try {
-        val dateFormat = SimpleDateFormat("dd-MMM-yy", Locale.getDefault())
+        val dateFormat = SimpleDateFormat("dd-MMM-yy", Locale.US)
         val date = dateFormat.parse(dateString)
         val currentDate = Date()
 
