@@ -27,7 +27,7 @@ jobs:
         run: echo Initiating Release!
 
       - name: Create Tag
-        run: git tag 3.1.6
+        run: git tag 3.1.7
 
       - name: Push Tag
         env:
