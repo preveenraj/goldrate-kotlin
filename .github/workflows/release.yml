@@ -26,8 +26,15 @@ jobs:
       - name: Run a one-line script
         run: echo Initiating Release!
 
+      - name: Extract Version Name
+        id: extract_version
+        run: |
+          VERSION_NAME=$(grep -oP 'versionName\s*=\s*"\K[^\"]+' app/build.gradle.kts)
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+
+
       - name: Create Tag
-        run: git tag 3.1.7
+        run: git tag ${{ env.VERSION_NAME }}
 
       - name: Push Tag
         env:
