@@ -64,4 +64,3 @@ jobs:
           packageName: com.techrush_app.goldrate
           releaseFiles: app/release/app-release.aab
           track: production
-          status: inProgress
