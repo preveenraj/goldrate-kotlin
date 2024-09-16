@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -102,7 +101,7 @@ fun Container() {
                         )
                         PriceContainer(
                             type = "Pavan",
-                            price = (data!!.rateString.toIntOrNull() ?: 0 * 8).toString(),
+                            price = ((data!!.rateString.toIntOrNull() ?: 0) * 8).toString(),
                             isLarge = false,
                         )
                     }
