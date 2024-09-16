@@ -27,7 +27,7 @@ jobs:
         run: echo Initiating Release!
 
       - name: Create Tag
-        run: git tag 3.1.5
+        run: git tag 3.1.6
 
       - name: Push Tag
         env:
@@ -64,3 +64,5 @@ jobs:
           packageName: com.techrush_app.goldrate
           releaseFiles: app/release/app-release.aab
           track: production
+          status: inProgress
+          whatsNewDirectory: app/src/main/play
