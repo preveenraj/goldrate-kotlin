@@ -11,8 +11,8 @@ android {
         applicationId = "com.techrush_app.goldrate"
         minSdk = 24
         targetSdk = 34
-        versionCode = 6
-        versionName = "3.1.3"
+        versionCode = 7
+        versionName = "3.1.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
