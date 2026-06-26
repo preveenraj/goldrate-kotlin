@@ -1,3 +1,6 @@
 <en-US>
-Test release
+• Brand-new clean, redesigned interface
+• Now shows the daily change, month high/low and a monthly price trend chart
+• More reliable rates, updated for the latest data format
+• Fixed a crash and added a clear message when the rate can't be loaded
 </en-US>

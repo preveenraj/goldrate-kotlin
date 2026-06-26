@@ -8,32 +8,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.techrush_app.goldrate.R
 
-// Set of Material typography styles to start with
+/** Monospace family used for numeric values (gives the rate a clean "ticker" feel). */
+val MonoFont = FontFamily(Font(R.font.jetbrainsmono))
+
+// Labels and headings use the platform's default sans for a clean, minimal look.
 val Typography = Typography(
     bodyLarge = TextStyle(
-        fontFamily = FontFamily(
-            Font(R.font.jetbrainsmono)
-        ),
-//        fontFamily = FontFamily.Default,
+        fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         lineHeight = 24.sp,
-        letterSpacing = 0.5.sp
-    )
-    /* Other default text styles to override
-    titleLarge = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Normal,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
-        letterSpacing = 0.sp
     ),
-    labelSmall = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Medium,
-        fontSize = 11.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.5.sp
-    )
-    */
 )
