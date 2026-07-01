@@ -48,12 +48,35 @@ fun formatDisplayDate(dateString: String): String = try {
     dateString
 }
 
-suspend fun fetchData(): Result? = withContext(Dispatchers.IO) {
+/** Reformats a scraped "26-Jun-26" date into a compact "26 Jun" for chart axes. Falls back to the input. */
+fun formatShortDate(dateString: String): String = try {
+    val parsed = SimpleDateFormat("dd-MMM-yy", Locale.US).parse(dateString)
+    if (parsed != null) SimpleDateFormat("dd MMM", Locale.US).format(parsed) else dateString
+} catch (e: Exception) {
+    dateString
+}
+
+/** Extracts the full month name ("January") from a "15-Jan-26" date, or null. */
+fun monthNameFromDate(dateString: String): String? = try {
+    val parsed = SimpleDateFormat("dd-MMM-yy", Locale.US).parse(dateString)
+    if (parsed != null) SimpleDateFormat("MMMM", Locale.US).format(parsed) else null
+} catch (e: Exception) {
+    null
+}
+
+/** Today's per-gram 22K rate from the default daily page. */
+suspend fun fetchData(): Result? = fetchDaily(BASE + "kerala-gold-rate-per-gram.htm")
+
+/**
+ * Scrapes a daily per-gram page (the current month, or a `daily-gold-prices-*`
+ * archive — both use the same 280px table) into a [Result].
+ */
+suspend fun fetchDaily(pageUrl: String): Result? = withContext(Dispatchers.IO) {
     try {
         skrape(HttpFetcher) {
             // perform a GET request to the specified URL
             request {
-                url = "https://www.keralagold.com/kerala-gold-rate-per-gram.htm"
+                url = pageUrl
             }
 
             response {
@@ -122,6 +145,6 @@ private fun parseTable(tableString: String): Result? {
         change = change,
         high = high,
         low = low,
-        history = points.map { it.rate },
+        history = points,
     )
 }

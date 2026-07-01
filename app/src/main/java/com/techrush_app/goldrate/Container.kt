@@ -1,6 +1,8 @@
 package com.techrush_app.goldrate
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,12 +20,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,8 +55,44 @@ import com.techrush_app.goldrate.ui.theme.TrendFlat
 import com.techrush_app.goldrate.ui.theme.TrendFlatBg
 import com.techrush_app.goldrate.ui.theme.TrendUp
 import com.techrush_app.goldrate.ui.theme.TrendUpBg
+import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 
+/** A destination pushed onto the in-app navigation stack. Home is the base. */
+sealed interface Screen {
+    data object MonthDetail : Screen
+    data object ThisYear : Screen
+    data object AllTime : Screen
+    data object Calculator : Screen
+    data object HistoryYears : Screen
+    data class HistoryYear(val year: Int) : Screen
+    data class HistoryMonth(val label: String, val url: String) : Screen
+}
+
+/** Routes a [Screen] to its composable. Screens needing today's rate render
+ *  nothing if it's somehow absent (they're only reachable once it has loaded). */
+@Composable
+private fun AppScreen(
+    screen: Screen,
+    data: Result?,
+    onNavigate: (Screen) -> Unit,
+    onBack: () -> Unit,
+) {
+    when (screen) {
+        Screen.MonthDetail -> data?.let { RateDetailScreen(it, onBack) }
+        Screen.ThisYear -> ThisYearScreen(onBack)
+        Screen.AllTime -> AllTimeScreen(onBack)
+        Screen.Calculator -> data?.let { CalculatorScreen(it.rate, onBack) }
+        Screen.HistoryYears -> HistoryYearsScreen(onBack) { onNavigate(Screen.HistoryYear(it)) }
+        is Screen.HistoryYear ->
+            HistoryYearScreen(screen.year, onBack) { label, url ->
+                onNavigate(Screen.HistoryMonth(label, url))
+            }
+        is Screen.HistoryMonth -> HistoryMonthScreen(screen.label, screen.url, onBack)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 @Preview
 fun Container() {
@@ -59,8 +101,16 @@ fun Container() {
     val isPreview = LocalInspectionMode.current
     var data by remember { mutableStateOf<Result?>(null) }
     var isLoading by remember { mutableStateOf(!isPreview) }
+    var isRefreshing by remember { mutableStateOf(false) }
+    val navStack = remember { mutableStateListOf<Screen>() }
+    val scope = rememberCoroutineScope()
 
     if (isPreview) {
+        val previewRates = listOf(
+            14320, 14310, 14275, 14000, 13905, 14040, 13645, 13545, 13350,
+            13620, 13665, 13890, 13850, 13705, 13370, 13390, 13430, 13255,
+            13230, 13100, 12845, 12955, 12980, 13085,
+        )
         data = Result(
             rate = 13085,
             date = "26-Jun-26",
@@ -69,16 +119,24 @@ fun Container() {
             change = 105,
             high = RatePoint("1-Jun-26", 14320),
             low = RatePoint("25-Jun-26", 12845, "Morning"),
-            history = listOf(
-                14320, 14310, 14275, 14000, 13905, 14040, 13645, 13545, 13350,
-                13620, 13665, 13890, 13850, 13705, 13370, 13390, 13430, 13255,
-                13230, 13100, 12845, 12955, 12980, 13085,
-            ),
+            history = previewRates.mapIndexed { i, r -> RatePoint("${i + 1}-Jun-26", r) },
         )
     } else {
         LaunchedEffect(Unit) {
             data = fetchData()
             isLoading = false
+        }
+    }
+
+    // Re-fetch on demand (pull-to-refresh / retry). Keeps the existing data if
+    // the fetch fails, so a transient network blip doesn't wipe the screen.
+    val refresh: () -> Unit = {
+        scope.launch {
+            isRefreshing = true
+            val fresh = fetchData()
+            if (fresh != null) data = fresh
+            isLoading = false
+            isRefreshing = false
         }
     }
 
@@ -88,16 +146,30 @@ fun Container() {
             .background(backgroundGradient)
     ) {
         val currentData = data
+        val top = navStack.lastOrNull()
+        BackHandler(enabled = navStack.isNotEmpty()) { navStack.removeAt(navStack.lastIndex) }
         when {
+            top != null -> AppScreen(
+                screen = top,
+                data = currentData,
+                onNavigate = { navStack.add(it) },
+                onBack = { navStack.removeAt(navStack.lastIndex) },
+            )
             isLoading -> LoadingState()
-            currentData == null -> ErrorState()
-            else -> RateDashboard(currentData)
+            currentData == null -> ErrorState(onRetry = refresh)
+            else -> PullToRefreshBox(
+                isRefreshing = isRefreshing,
+                onRefresh = refresh,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                RateDashboard(currentData, onNavigate = { navStack.add(it) })
+            }
         }
     }
 }
 
 @Composable
-private fun RateDashboard(data: Result) {
+private fun RateDashboard(data: Result, onNavigate: (Screen) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -145,7 +217,29 @@ private fun RateDashboard(data: Result) {
         }
         Spacer(Modifier.height(14.dp))
 
-        TrendCard(history = data.history, high = data.high.rate, low = data.low.rate)
+        TrendCard(
+            history = data.history.map { it.rate },
+            high = data.high.rate,
+            low = data.low.rate,
+            onClick = { onNavigate(Screen.MonthDetail) },
+        )
+        Spacer(Modifier.height(24.dp))
+
+        Text(
+            text = "EXPLORE",
+            color = TextTertiary,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 1.sp,
+        )
+        Spacer(Modifier.height(12.dp))
+        NavCard("This Year", "Month-by-month, this year") { onNavigate(Screen.ThisYear) }
+        Spacer(Modifier.height(12.dp))
+        NavCard("All-Time", "1925 → today · the long view") { onNavigate(Screen.AllTime) }
+        Spacer(Modifier.height(12.dp))
+        NavCard("Jewellery Calculator", "Shop price · making + GST") { onNavigate(Screen.Calculator) }
+        Spacer(Modifier.height(12.dp))
+        NavCard("History", "Browse 2009–2025 archives") { onNavigate(Screen.HistoryYears) }
         Spacer(Modifier.height(20.dp))
 
         Text(
@@ -275,15 +369,24 @@ private fun TrendChip(rate: Int, change: Int) {
 }
 
 @Composable
-private fun TrendCard(history: List<Int>, high: Int, low: Int) {
-    SurfaceCard(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = "THIS MONTH",
-            color = TextTertiary,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 1.sp,
-        )
+private fun TrendCard(history: List<Int>, high: Int, low: Int, onClick: () -> Unit) {
+    SurfaceCard(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = "THIS MONTH",
+                color = TextTertiary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 1.sp,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = "Details ›",
+                color = Gold,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
         Spacer(Modifier.height(12.dp))
         Sparkline(
             points = history,
@@ -319,14 +422,29 @@ private fun LoadingState() {
 }
 
 @Composable
-private fun ErrorState() {
-    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+private fun ErrorState(onRetry: () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxSize().padding(32.dp),
+    ) {
         Text(
             text = "Unable to load the gold rate.\nCheck your connection and try again.",
             color = TextSecondary,
             fontSize = 16.sp,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(32.dp),
+        )
+        Spacer(Modifier.height(20.dp))
+        Text(
+            text = "Try again",
+            color = TextPrimary,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .background(GoldSoft)
+                .clickable(onClick = onRetry)
+                .padding(horizontal = 24.dp, vertical = 12.dp),
         )
     }
 }

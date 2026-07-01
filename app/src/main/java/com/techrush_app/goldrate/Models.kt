@@ -16,5 +16,5 @@ data class Result(
     val change: Int,
     val high: RatePoint,
     val low: RatePoint,
-    val history: List<Int>,
+    val history: List<RatePoint>,
 )
