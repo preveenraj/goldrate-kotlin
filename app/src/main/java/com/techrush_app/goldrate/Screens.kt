@@ -103,7 +103,7 @@ fun HistoryYearScreen(year: Int, onBack: () -> Unit, onPickMonth: (String, Strin
 fun HistoryMonthScreen(label: String, url: String, onBack: () -> Unit) {
     AsyncChartScreen(
         title = label,
-        unitLabel = "22K · ₹ PER GRAM",
+        unitLabel = PAVAN_UNIT,
         hint = "Daily rates · drag to inspect",
         onBack = onBack,
         load = { fetchDaily(url)?.history ?: emptyList() },
