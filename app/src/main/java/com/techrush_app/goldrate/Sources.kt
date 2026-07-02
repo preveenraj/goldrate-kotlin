@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.Calendar
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -83,6 +84,24 @@ suspend fun fetchMonthlySeries(pageUrl: String): List<RatePoint> {
  * rate is the first number after the date (the last row bleeds into trailing
  * nav markup, so we can't take the last number), rounded to whole rupees.
  */
+/**
+ * The per-gram series used for the short-term forecast. Built from the clean
+ * monthly table (this year, falling back to include last year if the year is
+ * young) converted from per-pavan to per-gram, with today's live rate appended
+ * as the final anchor point. Avoids the daily archives, which are per-pavan and
+ * parse noisily.
+ */
+suspend fun fetchForecastSeries(): List<RatePoint> {
+    val thisYear = Calendar.getInstance().get(Calendar.YEAR)
+    var monthly = fetchMonthlySeries(THIS_YEAR_MONTHLY_URL)
+    if (monthly.size < 5) {
+        monthly = fetchMonthlySeries(monthlyUrl(thisYear - 1)) + monthly
+    }
+    val perGram = monthly.map { RatePoint(it.date, (it.rate / 8.0).roundToInt()) }
+    val today = fetchData()
+    return if (today != null) perGram + RatePoint(today.date, today.rate) else perGram
+}
+
 suspend fun fetchYearlySeries(pageUrl: String): List<RatePoint> {
     val html = fetchPageHtml(pageUrl) ?: return emptyList()
     val out = mutableListOf<RatePoint>()

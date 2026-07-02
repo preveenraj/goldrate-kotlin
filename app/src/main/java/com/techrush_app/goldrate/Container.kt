@@ -63,6 +63,7 @@ sealed interface Screen {
     data object MonthDetail : Screen
     data object ThisYear : Screen
     data object AllTime : Screen
+    data object Forecast : Screen
     data object Calculator : Screen
     data object HistoryYears : Screen
     data class HistoryYear(val year: Int) : Screen
@@ -82,6 +83,7 @@ private fun AppScreen(
         Screen.MonthDetail -> data?.let { RateDetailScreen(it, onBack) }
         Screen.ThisYear -> ThisYearScreen(onBack)
         Screen.AllTime -> AllTimeScreen(onBack)
+        Screen.Forecast -> ForecastScreen(onBack)
         Screen.Calculator -> data?.let { CalculatorScreen(it.rate, onBack) }
         Screen.HistoryYears -> HistoryYearsScreen(onBack) { onNavigate(Screen.HistoryYear(it)) }
         is Screen.HistoryYear ->
@@ -236,6 +238,8 @@ private fun RateDashboard(data: Result, onNavigate: (Screen) -> Unit) {
         NavCard("This Year", "Month-by-month, this year") { onNavigate(Screen.ThisYear) }
         Spacer(Modifier.height(12.dp))
         NavCard("All-Time", "1925 → today · the long view") { onNavigate(Screen.AllTime) }
+        Spacer(Modifier.height(12.dp))
+        NavCard("Forecast", "Where the trend points next") { onNavigate(Screen.Forecast) }
         Spacer(Modifier.height(12.dp))
         NavCard("Jewellery Calculator", "Shop price · making + GST") { onNavigate(Screen.Calculator) }
         Spacer(Modifier.height(12.dp))

@@ -64,6 +64,18 @@ fun monthNameFromDate(dateString: String): String? = try {
     null
 }
 
+/** Converts a "15-Jan-26" date into a whole-day count since the epoch, or null. Used
+ *  as the x-axis for trend fitting so gaps between readings are weighted correctly. */
+fun epochDay(dateString: String): Long? = try {
+    SimpleDateFormat("dd-MMM-yy", Locale.US).parse(dateString)?.let { it.time / 86_400_000L }
+} catch (e: Exception) {
+    null
+}
+
+/** Formats a whole-day epoch count back into a compact "26 Jun" label. */
+fun formatEpochDay(day: Long): String =
+    SimpleDateFormat("dd MMM", Locale.US).format(Date(day * 86_400_000L))
+
 /** Today's per-gram 22K rate from the default daily page. */
 suspend fun fetchData(): Result? = fetchDaily(BASE + "kerala-gold-rate-per-gram.htm")
 
