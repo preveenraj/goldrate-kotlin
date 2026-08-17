@@ -3,11 +3,13 @@ package com.techrush_app.goldrate
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -15,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -23,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import com.techrush_app.goldrate.ui.theme.CardBg
 import com.techrush_app.goldrate.ui.theme.CardBorder
 import com.techrush_app.goldrate.ui.theme.Gold
+import com.techrush_app.goldrate.ui.theme.GoldSoft
 import com.techrush_app.goldrate.ui.theme.MonoFont
 import com.techrush_app.goldrate.ui.theme.TextPrimary
 import com.techrush_app.goldrate.ui.theme.TextSecondary
@@ -42,6 +46,46 @@ fun SurfaceCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Column(modifier = Modifier.padding(18.dp), content = content)
+    }
+}
+
+/**
+ * A pill-shaped segmented control. Renders one tappable segment per option and
+ * fills the selected one with the accent colour.
+ */
+@Composable
+fun SegmentedToggle(
+    options: List<String>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    accent: Color = Gold,
+    accentSoft: Color = GoldSoft,
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(accentSoft)
+            .padding(3.dp),
+    ) {
+        options.forEachIndexed { index, option ->
+            val selected = index == selectedIndex
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (selected) accent else Color.Transparent)
+                    .clickable { onSelect(index) }
+                    .padding(horizontal = 16.dp, vertical = 7.dp),
+            ) {
+                Text(
+                    text = option,
+                    color = if (selected) Color.White else TextSecondary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
     }
 }
 

@@ -26,26 +26,61 @@ import com.techrush_app.goldrate.ui.theme.TextSecondary
 import com.techrush_app.goldrate.ui.theme.TextTertiary
 import java.util.Locale
 
-private const val MAKING_RATE = 0.10 // 10% value addition
-private const val GST_RATE = 0.03    // 3% GST on gold + making
+/** One-tap shortcuts covering the range Kerala shops usually quote. */
+private val MAKING_PRESETS = listOf("8", "10", "15", "25")
+
+private const val DEFAULT_MAKING_PERCENT = "10" // typical Kerala value addition
+private const val GST_RATE = 0.03               // 3% GST on gold + making
 
 /**
- * A jewellery-shop price estimator built on today's per-gram 22K rate. It mirrors
- * keralagold.com's calculator: gold value + 10% making charge + 3% GST. Also
- * works in reverse — how much gold a budget buys.
+ * A jewellery-shop price estimator built on today's per-gram rate. It mirrors
+ * keralagold.com's calculator: gold value + making charge + 3% GST. The making
+ * percentage is editable, because shops quote anywhere from 8% to 35% depending
+ * on the design. Also works in reverse — how much gold a budget buys.
  */
 @Composable
-fun CalculatorScreen(ratePerGram: Int, onBack: () -> Unit) {
+fun CalculatorScreen(ratePerGram: Int, purity: Purity, onBack: () -> Unit) {
     var weightText by remember { mutableStateOf("8") }
     var budgetText by remember { mutableStateOf("") }
+    var makingText by remember { mutableStateOf(DEFAULT_MAKING_PERCENT) }
+
+    // Guard against a nonsense entry (or an empty field mid-typing) skewing the
+    // estimate; 0–100% covers every real quote.
+    val makingPercent = (makingText.toDoubleOrNull() ?: 0.0).coerceIn(0.0, 100.0)
+    val makingRate = makingPercent / 100.0
+    val makingLabel = "Making charge · " + trimGrams(makingPercent) + "%"
 
     ChartScaffold(title = "Jewellery Calculator", onBack = onBack) {
         Text(
-            text = "Based on today's rate of ₹" + formatINR(ratePerGram) + " / gram (22K).",
+            text = "Based on today's rate of ₹" + formatINR(ratePerGram) +
+                " / gram (" + purity.label + ").",
             color = TextSecondary,
             fontSize = 13.sp,
         )
         Spacer(Modifier.height(18.dp))
+
+        SurfaceCard(modifier = Modifier.fillMaxWidth()) {
+            SectionLabel("MAKING CHARGES")
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "Set what your jeweller quotes. Applied to both estimates below.",
+                color = TextTertiary,
+                fontSize = 12.sp,
+            )
+            Spacer(Modifier.height(12.dp))
+            NumberField(
+                value = makingText,
+                onChange = { makingText = it },
+                label = "Making charge (%)",
+            )
+            Spacer(Modifier.height(12.dp))
+            SegmentedToggle(
+                options = MAKING_PRESETS.map { "$it%" },
+                selectedIndex = MAKING_PRESETS.indexOfFirst { it.toDouble() == makingPercent },
+                onSelect = { makingText = MAKING_PRESETS[it] },
+            )
+        }
+        Spacer(Modifier.height(16.dp))
 
         // --- Weight → estimated shop price ---
         SurfaceCard(modifier = Modifier.fillMaxWidth()) {
@@ -58,12 +93,12 @@ fun CalculatorScreen(ratePerGram: Int, onBack: () -> Unit) {
             )
             val grams = weightText.toDoubleOrNull() ?: 0.0
             val gold = grams * ratePerGram
-            val making = gold * MAKING_RATE
+            val making = gold * makingRate
             val gst = (gold + making) * GST_RATE
             val total = gold + making + gst
             Spacer(Modifier.height(14.dp))
             BreakdownRow("Gold value", gold)
-            BreakdownRow("Making charge · 10%", making)
+            BreakdownRow(makingLabel, making)
             BreakdownRow("GST · 3%", gst)
             Spacer(Modifier.height(8.dp))
             BreakdownRow("Total", total, emphasize = true)
@@ -90,14 +125,14 @@ fun CalculatorScreen(ratePerGram: Int, onBack: () -> Unit) {
                 label = "Budget (₹)",
             )
             val budget = budgetText.toDoubleOrNull() ?: 0.0
-            val allInPerGram = ratePerGram * (1 + MAKING_RATE) * (1 + GST_RATE)
+            val allInPerGram = ratePerGram * (1 + makingRate) * (1 + GST_RATE)
             val grams = if (allInPerGram > 0) budget / allInPerGram else 0.0
             Spacer(Modifier.height(14.dp))
             BreakdownRow("Gold (grams)", grams, isRupee = false)
             BreakdownRow("Gold (pavan · 8g)", grams / 8, isRupee = false)
             Spacer(Modifier.height(6.dp))
             Text(
-                text = "Includes 10% making + 3% GST.",
+                text = "Includes " + trimGrams(makingPercent) + "% making + 3% GST.",
                 color = TextTertiary,
                 fontSize = 12.sp,
             )

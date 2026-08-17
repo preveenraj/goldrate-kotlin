@@ -42,10 +42,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.techrush_app.goldrate.ui.theme.CardBg
+import com.techrush_app.goldrate.ui.theme.CardBorder
 import com.techrush_app.goldrate.ui.theme.Gold
 import com.techrush_app.goldrate.ui.theme.GoldSoft
 import com.techrush_app.goldrate.ui.theme.GradientBackground
 import com.techrush_app.goldrate.ui.theme.MonoFont
+import com.techrush_app.goldrate.ui.theme.Silver
+import com.techrush_app.goldrate.ui.theme.SilverSoft
 import com.techrush_app.goldrate.ui.theme.TextPrimary
 import com.techrush_app.goldrate.ui.theme.TextSecondary
 import com.techrush_app.goldrate.ui.theme.TextTertiary
@@ -58,6 +62,12 @@ import com.techrush_app.goldrate.ui.theme.TrendUpBg
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 
+/** The two metals the app tracks. Each tab owns its own data and back stack. */
+enum class MetalTab(val label: String, val accent: Color, val accentSoft: Color) {
+    GOLD("Gold", Gold, GoldSoft),
+    SILVER("Silver", Silver, SilverSoft),
+}
+
 /** A destination pushed onto the in-app navigation stack. Home is the base. */
 sealed interface Screen {
     data object MonthDetail : Screen
@@ -66,6 +76,7 @@ sealed interface Screen {
     data object Forecast : Screen
     data object Calculator : Screen
     data object HistoryYears : Screen
+    data object SilverTrend : Screen
     data class HistoryYear(val year: Int) : Screen
     data class HistoryMonth(val label: String, val url: String) : Screen
 }
@@ -76,21 +87,26 @@ sealed interface Screen {
 private fun AppScreen(
     screen: Screen,
     data: Result?,
+    silver: SilverResult?,
+    purity: Purity,
     onNavigate: (Screen) -> Unit,
     onBack: () -> Unit,
 ) {
     when (screen) {
-        Screen.MonthDetail -> data?.let { RateDetailScreen(it, onBack) }
-        Screen.ThisYear -> ThisYearScreen(onBack)
-        Screen.AllTime -> AllTimeScreen(onBack)
-        Screen.Forecast -> ForecastScreen(onBack)
-        Screen.Calculator -> data?.let { CalculatorScreen(it.rate, onBack) }
+        Screen.MonthDetail -> data?.let { RateDetailScreen(it.at(purity), purity, onBack) }
+        Screen.ThisYear -> ThisYearScreen(purity, onBack)
+        Screen.AllTime -> AllTimeScreen(purity, onBack)
+        Screen.Forecast -> ForecastScreen(purity, onBack)
+        Screen.Calculator -> data?.let {
+            CalculatorScreen(purity.applyTo(it.rate), purity, onBack)
+        }
         Screen.HistoryYears -> HistoryYearsScreen(onBack) { onNavigate(Screen.HistoryYear(it)) }
+        Screen.SilverTrend -> silver?.let { SilverTrendScreen(it, onBack) }
         is Screen.HistoryYear ->
-            HistoryYearScreen(screen.year, onBack) { label, url ->
+            HistoryYearScreen(screen.year, purity, onBack) { label, url ->
                 onNavigate(Screen.HistoryMonth(label, url))
             }
-        is Screen.HistoryMonth -> HistoryMonthScreen(screen.label, screen.url, onBack)
+        is Screen.HistoryMonth -> HistoryMonthScreen(screen.label, screen.url, purity, onBack)
     }
 }
 
@@ -101,10 +117,24 @@ fun Container() {
     val backgroundGradient = Brush.verticalGradient(GradientBackground)
 
     val isPreview = LocalInspectionMode.current
+    var tab by remember { mutableStateOf(MetalTab.GOLD) }
+    var purity by remember { mutableStateOf(Purity.K22) }
+
     var data by remember { mutableStateOf<Result?>(null) }
     var isLoading by remember { mutableStateOf(!isPreview) }
     var isRefreshing by remember { mutableStateOf(false) }
-    val navStack = remember { mutableStateListOf<Screen>() }
+
+    var silver by remember { mutableStateOf<SilverResult?>(null) }
+    var silverLoading by remember { mutableStateOf(false) }
+    var silverRefreshing by remember { mutableStateOf(false) }
+    // Distinguishes "not fetched yet" from "fetched and failed", so opening the
+    // tab shows a spinner rather than flashing the error state for a frame.
+    var silverTried by remember { mutableStateOf(false) }
+
+    // One stack per tab, so switching metals doesn't lose where you were.
+    val goldStack = remember { mutableStateListOf<Screen>() }
+    val silverStack = remember { mutableStateListOf<Screen>() }
+    val navStack = if (tab == MetalTab.GOLD) goldStack else silverStack
     val scope = rememberCoroutineScope()
 
     if (isPreview) {
@@ -130,9 +160,22 @@ fun Container() {
         }
     }
 
+    // Silver is fetched the first time its tab is opened, not on launch — the
+    // gold screen shouldn't wait on a second website it isn't showing.
+    if (!isPreview) {
+        LaunchedEffect(tab) {
+            if (tab == MetalTab.SILVER && silver == null && !silverTried) {
+                silverLoading = true
+                silver = fetchSilver()
+                silverTried = true
+                silverLoading = false
+            }
+        }
+    }
+
     // Re-fetch on demand (pull-to-refresh / retry). Keeps the existing data if
     // the fetch fails, so a transient network blip doesn't wipe the screen.
-    val refresh: () -> Unit = {
+    val refreshGold: () -> Unit = {
         scope.launch {
             isRefreshing = true
             val fresh = fetchData()
@@ -141,41 +184,140 @@ fun Container() {
             isRefreshing = false
         }
     }
+    val refreshSilver: () -> Unit = {
+        scope.launch {
+            // With nothing on screen yet, a retry should show the spinner, not
+            // the pull-to-refresh indicator the error state can't display.
+            if (silver == null) silverLoading = true else silverRefreshing = true
+            val fresh = fetchSilver()
+            if (fresh != null) silver = fresh
+            silverTried = true
+            silverLoading = false
+            silverRefreshing = false
+        }
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(backgroundGradient)
     ) {
-        val currentData = data
         val top = navStack.lastOrNull()
         BackHandler(enabled = navStack.isNotEmpty()) { navStack.removeAt(navStack.lastIndex) }
-        when {
-            top != null -> AppScreen(
+
+        if (top != null) {
+            AppScreen(
                 screen = top,
-                data = currentData,
+                data = data,
+                silver = silver,
+                purity = purity,
                 onNavigate = { navStack.add(it) },
                 onBack = { navStack.removeAt(navStack.lastIndex) },
             )
-            isLoading -> LoadingState()
-            currentData == null -> ErrorState(onRetry = refresh)
-            else -> PullToRefreshBox(
-                isRefreshing = isRefreshing,
-                onRefresh = refresh,
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                RateDashboard(currentData, onNavigate = { navStack.add(it) })
+        } else {
+            // Tab roots share the chrome: scrollable body above, metal switcher below.
+            Column(modifier = Modifier.fillMaxSize().systemBarsPadding()) {
+                Box(modifier = Modifier.weight(1f)) {
+                    when (tab) {
+                        MetalTab.GOLD -> {
+                            val currentData = data
+                            when {
+                                isLoading -> LoadingState(Gold)
+                                currentData == null -> ErrorState("gold rate", Gold, refreshGold)
+                                else -> PullToRefreshBox(
+                                    isRefreshing = isRefreshing,
+                                    onRefresh = refreshGold,
+                                    modifier = Modifier.fillMaxSize(),
+                                ) {
+                                    RateDashboard(
+                                        data = currentData.at(purity),
+                                        purity = purity,
+                                        onPurityChange = { purity = it },
+                                        onNavigate = { navStack.add(it) },
+                                    )
+                                }
+                            }
+                        }
+
+                        MetalTab.SILVER -> {
+                            val currentSilver = silver
+                            when {
+                                silverLoading || !silverTried -> LoadingState(Silver)
+                                currentSilver == null -> ErrorState("silver rate", Silver, refreshSilver)
+                                else -> PullToRefreshBox(
+                                    isRefreshing = silverRefreshing,
+                                    onRefresh = refreshSilver,
+                                    modifier = Modifier.fillMaxSize(),
+                                ) {
+                                    SilverDashboard(
+                                        data = currentSilver,
+                                        onNavigate = { navStack.add(it) },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                MetalTabBar(selected = tab, onSelect = { tab = it })
             }
         }
     }
 }
 
+/** The bottom metal switcher. Shown on the tab roots only; drill-down screens
+ *  carry their own Back affordance and use the full height. */
 @Composable
-private fun RateDashboard(data: Result, onNavigate: (Screen) -> Unit) {
+private fun MetalTabBar(selected: MetalTab, onSelect: (MetalTab) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(CardBg)
+            .padding(horizontal = 20.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        MetalTab.entries.forEach { entry ->
+            val active = entry == selected
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(if (active) entry.accentSoft else CardBorder.copy(alpha = 0.35f))
+                    .clickable { onSelect(entry) }
+                    .padding(vertical = 12.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(9.dp)
+                        .clip(CircleShape)
+                        .background(if (active) entry.accent else TextTertiary)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = entry.label,
+                    color = if (active) TextPrimary else TextSecondary,
+                    fontSize = 14.sp,
+                    fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                )
+            }
+        }
+    }
+}
+
+/** The two purities the gold screen can show. Order matches [Purity.entries]. */
+private val PURITY_LABELS = Purity.entries.map { it.label }
+
+@Composable
+private fun RateDashboard(
+    data: Result,
+    purity: Purity,
+    onPurityChange: (Purity) -> Unit,
+    onNavigate: (Screen) -> Unit,
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .systemBarsPadding()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp)
             .padding(top = 28.dp, bottom = 28.dp)
@@ -183,7 +325,12 @@ private fun RateDashboard(data: Result, onNavigate: (Screen) -> Unit) {
         Header(date = data.date, session = data.session, dayStatus = data.dayStatus)
         Spacer(Modifier.height(24.dp))
 
-        HeroCard(rate = data.rate, change = data.change)
+        HeroCard(
+            rate = data.rate,
+            change = data.change,
+            purity = purity,
+            onPurityChange = onPurityChange,
+        )
         Spacer(Modifier.height(14.dp))
 
         val pavan = data.rate * 8
@@ -191,7 +338,7 @@ private fun RateDashboard(data: Result, onNavigate: (Screen) -> Unit) {
                 "₹" + formatINR(data.change.absoluteValue)
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             StatCard(
-                label = "Pavan · 8g",
+                label = "Pavan · 8g · " + purity.label,
                 value = "₹" + formatINR(pavan),
                 modifier = Modifier.weight(1f),
             )
@@ -247,7 +394,8 @@ private fun RateDashboard(data: Result, onNavigate: (Screen) -> Unit) {
         Spacer(Modifier.height(20.dp))
 
         Text(
-            text = "22 Carat · 916 gold  ·  Source: keralagold.com",
+            text = purity.caratLabel + " gold  ·  Source: keralagold.com" +
+                if (purity == Purity.K24) "  ·  24K derived at 24/22" else "",
             color = TextTertiary,
             fontSize = 12.sp,
             textAlign = TextAlign.Center,
@@ -270,7 +418,7 @@ private fun Header(date: String, session: String?, dayStatus: String) {
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = "Live 22K gold rate",
+                text = "Live gold rate",
                 color = TextSecondary,
                 fontSize = 13.sp,
             )
@@ -312,15 +460,28 @@ private fun DatePill(date: String, session: String?, dayStatus: String) {
 }
 
 @Composable
-private fun HeroCard(rate: Int, change: Int) {
+private fun HeroCard(
+    rate: Int,
+    change: Int,
+    purity: Purity,
+    onPurityChange: (Purity) -> Unit,
+) {
     SurfaceCard(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = "PER GRAM · 22K",
-            color = TextTertiary,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 1.sp,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = "PER GRAM · " + purity.label,
+                color = TextTertiary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 1.sp,
+                modifier = Modifier.weight(1f),
+            )
+            SegmentedToggle(
+                options = PURITY_LABELS,
+                selectedIndex = purity.ordinal,
+                onSelect = { onPurityChange(Purity.entries[it]) },
+            )
+        }
         Spacer(Modifier.height(6.dp))
         Text(
             text = "₹" + formatINR(rate),
@@ -328,6 +489,13 @@ private fun HeroCard(rate: Int, change: Int) {
             fontFamily = MonoFont,
             fontSize = 52.sp,
             fontWeight = FontWeight.Bold,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = "₹" + formatINR(rate * 8) + " per pavan · 8g",
+            color = TextSecondary,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
         )
         Spacer(Modifier.height(12.dp))
         TrendChip(rate = rate, change = change)
@@ -419,21 +587,21 @@ private fun TrendCard(history: List<Int>, high: Int, low: Int, onClick: () -> Un
 }
 
 @Composable
-private fun LoadingState() {
+private fun LoadingState(accent: Color) {
     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-        CircularProgressIndicator(color = Gold)
+        CircularProgressIndicator(color = accent)
     }
 }
 
 @Composable
-private fun ErrorState(onRetry: () -> Unit) {
+private fun ErrorState(what: String, accent: Color, onRetry: () -> Unit) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
         modifier = Modifier.fillMaxSize().padding(32.dp),
     ) {
         Text(
-            text = "Unable to load the gold rate.\nCheck your connection and try again.",
+            text = "Unable to load the $what.\nCheck your connection and try again.",
             color = TextSecondary,
             fontSize = 16.sp,
             textAlign = TextAlign.Center,
@@ -446,7 +614,7 @@ private fun ErrorState(onRetry: () -> Unit) {
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier
                 .clip(RoundedCornerShape(12.dp))
-                .background(GoldSoft)
+                .background(accent.copy(alpha = 0.12f))
                 .clickable(onClick = onRetry)
                 .padding(horizontal = 24.dp, vertical = 12.dp),
         )

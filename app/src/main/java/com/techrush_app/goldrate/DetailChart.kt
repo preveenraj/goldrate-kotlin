@@ -66,10 +66,10 @@ import kotlin.math.roundToInt
  * plus month high/low stats. A thin wrapper over the shared chart scaffold.
  */
 @Composable
-fun RateDetailScreen(data: Result, onBack: () -> Unit) {
+fun RateDetailScreen(data: Result, purity: Purity, onBack: () -> Unit) {
     ChartScaffold(title = "Monthly Trend", onBack = onBack) {
         RateChartCard(
-            unitLabel = "22K · ₹ PER GRAM",
+            unitLabel = purity.label + " · ₹ PER GRAM",
             hint = "Drag across the chart to inspect any day",
             points = data.history,
         )
@@ -90,6 +90,8 @@ fun AsyncChartScreen(
     onBack: () -> Unit,
     load: suspend () -> List<RatePoint>,
     logScale: Boolean = false,
+    accent: Color = Gold,
+    accentSoft: Color = GoldSoft,
     footer: @Composable ColumnScope.(List<RatePoint>) -> Unit = { SeriesStats(it) },
 ) {
     var points by remember { mutableStateOf<List<RatePoint>?>(null) }
@@ -102,17 +104,19 @@ fun AsyncChartScreen(
         isLoading = false
     }
 
-    ChartScaffold(title = title, onBack = onBack) {
+    ChartScaffold(title = title, onBack = onBack, accent = accent, accentSoft = accentSoft) {
         val current = points
         when {
-            isLoading -> ChartMessage("Loading…", showSpinner = true)
-            current.isNullOrEmpty() -> RetryMessage(onRetry = { reloadKey++ })
+            isLoading -> ChartMessage("Loading…", showSpinner = true, accent = accent)
+            current.isNullOrEmpty() ->
+                RetryMessage(onRetry = { reloadKey++ }, accentSoft = accentSoft)
             else -> {
                 RateChartCard(
                     unitLabel = unitLabel,
                     hint = hint,
                     points = current,
                     logScale = logScale,
+                    accent = accent,
                 )
                 Spacer(Modifier.height(16.dp))
                 footer(current)
@@ -126,6 +130,8 @@ fun AsyncChartScreen(
 fun ChartScaffold(
     title: String,
     onBack: () -> Unit,
+    accent: Color = Gold,
+    accentSoft: Color = GoldSoft,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
@@ -141,11 +147,11 @@ fun ChartScaffold(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
-                    .background(GoldSoft)
+                    .background(accentSoft)
                     .clickable(onClick = onBack)
                     .padding(horizontal = 12.dp, vertical = 8.dp),
             ) {
-                Text(text = "‹", color = Gold, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(text = "‹", color = accent, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.width(6.dp))
                 Text(
                     text = "Back",
@@ -174,6 +180,7 @@ fun RateChartCard(
     hint: String,
     points: List<RatePoint>,
     logScale: Boolean = false,
+    accent: Color = Gold,
 ) {
     SurfaceCard(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -189,6 +196,7 @@ fun RateChartCard(
         DetailChart(
             points = points,
             logScale = logScale,
+            accent = accent,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(260.dp),
@@ -237,7 +245,7 @@ fun SeriesStats(points: List<RatePoint>) {
 }
 
 @Composable
-private fun ChartMessage(text: String, showSpinner: Boolean = false) {
+private fun ChartMessage(text: String, showSpinner: Boolean = false, accent: Color = Gold) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -245,7 +253,7 @@ private fun ChartMessage(text: String, showSpinner: Boolean = false) {
         contentAlignment = Alignment.Center,
     ) {
         if (showSpinner) {
-            CircularProgressIndicator(color = Gold)
+            CircularProgressIndicator(color = accent)
         } else {
             Text(text = text, color = TextSecondary, fontSize = 14.sp, textAlign = TextAlign.Center)
         }
@@ -253,7 +261,7 @@ private fun ChartMessage(text: String, showSpinner: Boolean = false) {
 }
 
 @Composable
-private fun RetryMessage(onRetry: () -> Unit) {
+private fun RetryMessage(onRetry: () -> Unit, accentSoft: Color = GoldSoft) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -275,7 +283,7 @@ private fun RetryMessage(onRetry: () -> Unit) {
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier
                 .clip(RoundedCornerShape(12.dp))
-                .background(GoldSoft)
+                .background(accentSoft)
                 .clickable(onClick = onRetry)
                 .padding(horizontal = 24.dp, vertical = 12.dp),
         )
@@ -287,6 +295,7 @@ private fun DetailChart(
     points: List<RatePoint>,
     modifier: Modifier = Modifier,
     logScale: Boolean = false,
+    accent: Color = Gold,
 ) {
     if (points.size < 2) {
         Box(modifier = modifier, contentAlignment = Alignment.Center) {
@@ -303,7 +312,7 @@ private fun DetailChart(
     val tipTextPx = with(density) { 13.sp.toPx() }
     val tipSubPx = with(density) { 11.sp.toPx() }
 
-    val lineColor = Gold
+    val lineColor = accent
     val axisColor = TextTertiary
     val gridColor = CardBorder
     val markerHigh = TrendUp

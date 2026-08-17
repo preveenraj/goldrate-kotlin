@@ -157,14 +157,14 @@ private fun directionColor(direction: String): Color = when (direction) {
 }
 
 @Composable
-fun ForecastScreen(onBack: () -> Unit) {
+fun ForecastScreen(purity: Purity, onBack: () -> Unit) {
     var forecast by remember { mutableStateOf<Forecast?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var reloadKey by remember { mutableStateOf(0) }
 
-    LaunchedEffect(reloadKey) {
+    LaunchedEffect(reloadKey, purity) {
         isLoading = true
-        forecast = computeForecast(fetchForecastSeries())
+        forecast = computeForecast(fetchForecastSeries().at(purity))
         isLoading = false
     }
 
@@ -183,7 +183,7 @@ fun ForecastScreen(onBack: () -> Unit) {
                 Spacer(Modifier.height(16.dp))
                 SurfaceCard(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text = "22K · ₹ PER GRAM · PROJECTION",
+                        text = purity.label + " · ₹ PER GRAM · PROJECTION",
                         color = TextTertiary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,

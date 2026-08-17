@@ -46,4 +46,8 @@ jobs:
           releaseFiles: app/release/app-release.aab
           track: production
           whatsNewDirectory: app/src/main/play
-          status: completed
+          # Staged rollout: ships to 20% of users and stays halt-able from the
+          # Play Console. Promote to 100% there (or set status: completed here)
+          # once the release looks clean on real devices.
+          status: inProgress
+          userFraction: 0.2

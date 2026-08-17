@@ -10,29 +10,31 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
 import com.techrush_app.goldrate.ui.theme.TextTertiary
 
-private const val PAVAN_UNIT = "1 PAVAN · 8G · ₹"
+/** The scraped archives are all quoted per pavan; the label carries the purity
+ *  so a 24K chart never reads as a 22K one. */
+private fun pavanUnit(purity: Purity) = "1 PAVAN · 8G · " + purity.label + " · ₹"
 
 /** 2026, month by month (per-pavan). */
 @Composable
-fun ThisYearScreen(onBack: () -> Unit) {
+fun ThisYearScreen(purity: Purity, onBack: () -> Unit) {
     AsyncChartScreen(
         title = "This Year",
-        unitLabel = PAVAN_UNIT,
+        unitLabel = pavanUnit(purity),
         hint = "This year · month by month",
         onBack = onBack,
-        load = { fetchMonthlySeries(THIS_YEAR_MONTHLY_URL) },
+        load = { fetchMonthlySeries(THIS_YEAR_MONTHLY_URL).at(purity) },
     )
 }
 
 /** The full 1925 → present curve (per-pavan), on a log scale. */
 @Composable
-fun AllTimeScreen(onBack: () -> Unit) {
+fun AllTimeScreen(purity: Purity, onBack: () -> Unit) {
     AsyncChartScreen(
         title = "All-Time",
-        unitLabel = PAVAN_UNIT,
+        unitLabel = pavanUnit(purity),
         hint = "1925 → today · log scale",
         onBack = onBack,
-        load = { fetchYearlySeries(YEARLY_URL) },
+        load = { fetchYearlySeries(YEARLY_URL).at(purity) },
         logScale = true,
     )
 }
@@ -65,13 +67,18 @@ fun HistoryYearsScreen(onBack: () -> Unit, onPickYear: (Int) -> Unit) {
 
 /** History browser step 2: a year's monthly chart plus a list of its months. */
 @Composable
-fun HistoryYearScreen(year: Int, onBack: () -> Unit, onPickMonth: (String, String) -> Unit) {
+fun HistoryYearScreen(
+    year: Int,
+    purity: Purity,
+    onBack: () -> Unit,
+    onPickMonth: (String, String) -> Unit,
+) {
     AsyncChartScreen(
         title = year.toString(),
-        unitLabel = PAVAN_UNIT,
+        unitLabel = pavanUnit(purity),
         hint = "$year · month by month",
         onBack = onBack,
-        load = { fetchMonthlySeries(monthlyUrl(year)) },
+        load = { fetchMonthlySeries(monthlyUrl(year)).at(purity) },
         footer = { points ->
             SeriesStats(points)
             Spacer(Modifier.height(20.dp))
@@ -100,12 +107,12 @@ fun HistoryYearScreen(year: Int, onBack: () -> Unit, onPickMonth: (String, Strin
 
 /** History browser step 3: a single month's daily per-gram chart. */
 @Composable
-fun HistoryMonthScreen(label: String, url: String, onBack: () -> Unit) {
+fun HistoryMonthScreen(label: String, url: String, purity: Purity, onBack: () -> Unit) {
     AsyncChartScreen(
         title = label,
-        unitLabel = PAVAN_UNIT,
+        unitLabel = pavanUnit(purity),
         hint = "Daily rates · drag to inspect",
         onBack = onBack,
-        load = { fetchDaily(url)?.history ?: emptyList() },
+        load = { (fetchDaily(url)?.history ?: emptyList()).at(purity) },
     )
 }

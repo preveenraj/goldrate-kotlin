@@ -21,8 +21,8 @@ android {
         applicationId = "com.techrush_app.goldrate"
         minSdk = 24
         targetSdk = 35
-        versionCode = 15
-        versionName = "3.5.0"
+        versionCode = 16
+        versionName = "3.6.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -63,6 +63,11 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+    testOptions {
+        // The scrapers log via android.util.Log; let JVM tests exercise them
+        // without stubbing the framework.
+        unitTests.isReturnDefaultValues = true
     }
     packaging {
         resources {

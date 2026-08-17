@@ -16,6 +16,11 @@ val Gold = Color(0xFFC8A12B)        // readable gold on light surfaces
 val GoldDeep = Color(0xFFA9851A)
 val GoldSoft = Color(0x1FC8A12B)    // ~12% gold tint for fills
 
+// --- Silver accent ---
+val Silver = Color(0xFF6E7B8B)      // cool grey-blue, readable on light surfaces
+val SilverDeep = Color(0xFF4E5A68)
+val SilverSoft = Color(0x1F6E7B8B)  // ~12% silver tint for fills
+
 // --- Text ---
 val TextPrimary = Color(0xFF15171C)
 val TextSecondary = Color(0xFF6B7280)
