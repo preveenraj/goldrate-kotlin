@@ -46,8 +46,8 @@ jobs:
           releaseFiles: app/release/app-release.aab
           track: production
           whatsNewDirectory: app/src/main/play
-          # Staged rollout: ships to 20% of users and stays halt-able from the
-          # Play Console. Promote to 100% there (or set status: completed here)
-          # once the release looks clean on real devices.
-          status: inProgress
-          userFraction: 0.2
+          # Full rollout: every user gets the release at once. There is no
+          # staged halt valve, so a bad build has to be rolled back from the
+          # Play Console. Switch back to `status: inProgress` plus a
+          # `userFraction` for a staged release.
+          status: completed

@@ -17,6 +17,12 @@ data class Result(
     val high: RatePoint,
     val low: RatePoint,
     val history: List<RatePoint>,
+    /**
+     * The window [high] and [low] cover, for their card labels. The primary
+     * source publishes a full month; the backup only ten days, and saying
+     * "Month High" over ten days would overstate it.
+     */
+    val periodLabel: String = "Month",
 )
 
 /**
@@ -53,6 +59,11 @@ data class SilverResult(
     val change: Int,
     val history: List<RatePoint>,
     val months: List<SilverMonth>,
+    /**
+     * The window [history] covers, for the high/low card labels. The primary
+     * source publishes ten days; the backup only today and yesterday.
+     */
+    val periodLabel: String = "10-Day",
 ) {
     val perGram: Int get() = kotlin.math.round(perKg / 1000.0).toInt()
     val changePerGram: Int get() = kotlin.math.round(change / 1000.0).toInt()

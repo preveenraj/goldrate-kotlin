@@ -1,13 +1,6 @@
 package com.techrush_app.goldrate
 
 import android.util.Log
-import it.skrape.core.htmlDocument
-import it.skrape.fetcher.HttpFetcher
-import it.skrape.fetcher.response
-import it.skrape.fetcher.skrape
-import it.skrape.selects.html5.table
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -76,42 +69,68 @@ fun epochDay(dateString: String): Long? = try {
 fun formatEpochDay(day: Long): String =
     SimpleDateFormat("dd MMM", Locale.US).format(Date(day * 86_400_000L))
 
-/** Today's per-gram 22K rate from the default daily page. */
-suspend fun fetchData(): Result? = fetchDaily(BASE + "kerala-gold-rate-per-gram.htm")
+/**
+ * Today's per-gram 22K rate.
+ *
+ * keralagold.com is the primary source. It was unreachable for a day and the
+ * screen had nothing to fall back on, so a failure now retries against
+ * goodreturns, which publishes the identical Kerala 22K figure — see
+ * [fetchBackupGold]. Only a total failure of both reaches the error state.
+ */
+suspend fun fetchData(): Result? =
+    fetchDaily(BASE + "kerala-gold-rate-per-gram.htm")
+        ?: fetchBackupGold().also {
+            if (it != null) Log.w("fetchData", "Primary source failed; served the backup")
+        }
+
+// The rate table on every daily page, e.g.
+// `<table border=1 cellspacing=0 cellpadding=2 width="280" align="center">`.
+// Attributes are matched individually rather than as one ordered pattern, and
+// tolerate the page's mix of quoted and bare values.
+private val TABLE_OPEN_REGEX = Regex("""<table[^>]*>""", RegexOption.IGNORE_CASE)
+private val CELLSPACING_0_REGEX = Regex("""cellspacing\s*=\s*"?0(?!\d)""", RegexOption.IGNORE_CASE)
+private val WIDTH_280_REGEX = Regex("""width\s*=\s*"?280(?!\d)""", RegexOption.IGNORE_CASE)
+
+/**
+ * Returns the inner HTML of the daily rate table, or null if the page doesn't
+ * carry one. Isolating the table keeps [parseTable] from picking up dated rows
+ * elsewhere on the page if the site ever adds a summary block.
+ */
+private fun dailyTableHtml(html: String): String? {
+    for (open in TABLE_OPEN_REGEX.findAll(html)) {
+        if (!CELLSPACING_0_REGEX.containsMatchIn(open.value)) continue
+        if (!WIDTH_280_REGEX.containsMatchIn(open.value)) continue
+        val end = html.indexOf("</table>", open.range.last + 1)
+        if (end < 0) continue
+        return html.substring(open.range.last + 1, end)
+    }
+    return null
+}
 
 /**
  * Scrapes a daily per-gram page (the current month, or a `daily-gold-prices-*`
  * archive — both use the same 280px table) into a [Result].
+ *
+ * Goes through [fetchPageHtml] rather than an HTML library so the gold screen
+ * gets the same `Connection: close` and retry the silver fetcher has: without
+ * them a second request minutes later picks up a pooled socket the CDN already
+ * dropped, and the screen falls back to its "no data" state.
  */
-suspend fun fetchDaily(pageUrl: String): Result? = withContext(Dispatchers.IO) {
-    try {
-        skrape(HttpFetcher) {
-            // perform a GET request to the specified URL
-            request {
-                url = pageUrl
-            }
-
-            response {
-                // retrieve the HTML element from the
-                // document as a string
-                htmlDocument {
-                    table {
-                        withAttributes = listOf(
-                            "cellspacing" to "0",
-                            "width" to "280",
-                        )
-                        findAll {
-                            parseTable(this.toString())
-                        }
-                    }
-                }
-            }
-        }
-    } catch (e: Exception) {
-        Log.e("fetchData", "Failed to fetch or parse gold rate", e)
+suspend fun fetchDaily(pageUrl: String): Result? {
+    val html = fetchPageHtml(pageUrl) ?: return null
+    return parseDailyPage(html) ?: run {
+        Log.e("fetchDaily", "No parseable rate table on $pageUrl")
         null
     }
 }
+
+/**
+ * Parses a whole daily page into a [Result]: isolates the rate table, then
+ * reads its rows. Kept separate from the fetch so it can be tested against
+ * saved copies of the real pages — see `GoldParserTest`.
+ */
+internal fun parseDailyPage(html: String): Result? =
+    dailyTableHtml(html)?.let { parseTable(it) }
 
 // Matches a "dd-MMM-yy" date, e.g. "26-Jun-26".
 private val DATE_REGEX = Regex("""\d{1,2}-[A-Za-z]{3}-\d{2}""")

@@ -95,8 +95,13 @@ private fun normaliseDate(match: MatchResult): String {
  * instead of showing invented numbers.
  */
 suspend fun fetchSilver(): SilverResult? {
-    val html = fetchHtml(SILVER_URL) ?: return null
-    return parseSilverPage(html)
+    val html = fetchHtml(SILVER_URL)
+    val primary = if (html != null) parseSilverPage(html) else null
+    if (primary != null) return primary
+    // One host shouldn't be able to empty the tab — see [fetchBackupSilver].
+    return fetchBackupSilver().also {
+        if (it != null) Log.w("fetchSilver", "Primary source failed; served the backup")
+    }
 }
 
 /**

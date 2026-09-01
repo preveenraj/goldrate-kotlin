@@ -21,8 +21,8 @@ android {
         applicationId = "com.techrush_app.goldrate"
         minSdk = 24
         targetSdk = 35
-        versionCode = 16
-        versionName = "3.6.0"
+        versionCode = 17
+        versionName = "3.6.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -80,7 +80,9 @@ android {
 
 dependencies {
 
-    implementation("it.skrape:skrapeit:1.2.2")
+    // skrape.it was dropped when the scrapers moved to HttpURLConnection
+    // directly, so they can set `Connection: close` and retry — which the
+    // library gave no way to do. It pulled in jsoup + ktor for one selector.
 
     implementation("androidx.work:work-runtime-ktx:2.9.1")
 

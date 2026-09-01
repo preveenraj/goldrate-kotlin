@@ -352,13 +352,13 @@ private fun RateDashboard(
         Spacer(Modifier.height(14.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             StatCard(
-                label = "Month High",
+                label = data.periodLabel + " High",
                 value = "₹" + formatINR(data.high.rate),
                 sub = formatDisplayDate(data.high.date),
                 modifier = Modifier.weight(1f),
             )
             StatCard(
-                label = "Month Low",
+                label = data.periodLabel + " Low",
                 value = "₹" + formatINR(data.low.rate),
                 sub = formatDisplayDate(data.low.date),
                 modifier = Modifier.weight(1f),

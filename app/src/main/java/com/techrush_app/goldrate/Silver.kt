@@ -86,14 +86,14 @@ fun SilverDashboard(data: SilverResult, onNavigate: (Screen) -> Unit) {
         if (high != null && low != null) {
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 StatCard(
-                    label = "10-Day High",
+                    label = data.periodLabel + " High",
                     value = "₹" + formatINR(scaled(high.rate, perKg)),
                     sub = formatDisplayDate(high.date),
                     valueColor = TrendUp,
                     modifier = Modifier.weight(1f),
                 )
                 StatCard(
-                    label = "10-Day Low",
+                    label = data.periodLabel + " Low",
                     value = "₹" + formatINR(scaled(low.rate, perKg)),
                     sub = formatDisplayDate(low.date),
                     valueColor = TrendDown,

@@ -25,20 +25,43 @@ const val THIS_YEAR_MONTHLY_URL = BASE + "monthly-gold-prices.htm"
 /** All-time (1925→present) yearly chart. */
 const val YEARLY_URL = BASE + "yearly-gold-prices.htm"
 
-/** Fetches a page's raw HTML. Returns null on any network/parse failure. */
-private suspend fun fetchPageHtml(pageUrl: String): String? = withContext(Dispatchers.IO) {
-    try {
-        val conn = (URL(pageUrl).openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
-            setRequestProperty("User-Agent", "Mozilla/5.0")
-            connectTimeout = 15000
-            readTimeout = 15000
+private const val FETCH_ATTEMPTS = 2
+
+private const val GOLD_UA =
+    "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) " +
+        "Chrome/120.0.0.0 Mobile Safari/537.36"
+
+/**
+ * Fetches a page's raw HTML. Returns null on any network failure.
+ *
+ * `Connection: close` is deliberate: HttpURLConnection otherwise pools the
+ * socket, and a second request minutes later reliably picks up a connection the
+ * CDN has already dropped — surfacing as "unexpected end of stream" and an
+ * empty screen. One retry covers the rest of the ordinary transient failures.
+ * Mirrors [SilverSource]'s fetcher, which has carried this fix since 3.6.0.
+ */
+internal suspend fun fetchPageHtml(pageUrl: String): String? = withContext(Dispatchers.IO) {
+    repeat(FETCH_ATTEMPTS) { attempt ->
+        try {
+            val conn = (URL(pageUrl).openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                setRequestProperty("User-Agent", GOLD_UA)
+                setRequestProperty("Accept", "text/html")
+                setRequestProperty("Connection", "close")
+                instanceFollowRedirects = true
+                connectTimeout = 15000
+                readTimeout = 20000
+            }
+            try {
+                return@withContext conn.inputStream.bufferedReader().use { it.readText() }
+            } finally {
+                conn.disconnect()
+            }
+        } catch (e: Exception) {
+            Log.e("fetchPageHtml", "Attempt ${attempt + 1} failed for $pageUrl", e)
         }
-        conn.inputStream.bufferedReader().use { it.readText() }
-    } catch (e: Exception) {
-        Log.e("fetchPageHtml", "Failed to fetch $pageUrl", e)
-        null
     }
+    null
 }
 
 private val TAG_REGEX = Regex("<[^>]+>")
