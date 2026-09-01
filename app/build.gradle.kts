@@ -20,9 +20,9 @@ android {
     defaultConfig {
         applicationId = "com.techrush_app.goldrate"
         minSdk = 24
-        targetSdk = 35
-        versionCode = 17
-        versionName = "3.6.1"
+        targetSdk = 36
+        versionCode = 18
+        versionName = "3.6.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
