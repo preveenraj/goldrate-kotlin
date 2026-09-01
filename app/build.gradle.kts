@@ -21,8 +21,8 @@ android {
         applicationId = "com.techrush_app.goldrate"
         minSdk = 24
         targetSdk = 36
-        versionCode = 18
-        versionName = "3.6.2"
+        versionCode = 19
+        versionName = "3.7.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -111,4 +111,8 @@ dependencies {
     // Play in-app updates: lets a code fix reach users immediately instead of
     // waiting on Play's own update schedule. See AppUpdates.kt.
     implementation("com.google.android.play:app-update-ktx:2.1.0")
+    // app-update drags in androidx.fragment 1.0.0 (resolved to 1.1.0), which is
+    // below the 1.3.0 the ActivityResult APIs require — lintVitalRelease fails
+    // the build on it. Pinned forward; nothing here uses Fragment directly.
+    implementation("androidx.fragment:fragment:1.8.9")
 }

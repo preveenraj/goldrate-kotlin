@@ -1,1 +1,3 @@
-• Updated for the latest version of Android. No changes to rates or features — the gold and silver screens work exactly as before.
+• Rates now load in a fraction of the time, and use far less data
+• More reliable: if a rate website is down or changes, the app switches to another source automatically instead of showing an empty screen
+• Updates can now install from inside the app, so fixes reach you sooner
