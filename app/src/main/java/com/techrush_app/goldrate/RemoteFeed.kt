@@ -50,12 +50,6 @@ private val feedMutex = Mutex()
 private var cachedFeed: RatesFeed? = null
 private var cachedAtMillis = 0L
 
-/** Drops the coalescing cache. For tests. */
-internal fun resetFeedCache() {
-    cachedFeed = null
-    cachedAtMillis = 0L
-}
-
 private suspend fun feed(): RatesFeed? = feedMutex.withLock {
     val now = System.currentTimeMillis()
     val cached = cachedFeed
