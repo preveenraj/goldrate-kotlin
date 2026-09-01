@@ -95,6 +95,8 @@ private fun normaliseDate(match: MatchResult): String {
  * instead of showing invented numbers.
  */
 suspend fun fetchSilver(): SilverResult? {
+    fetchFeedSilver()?.let { return it }
+    Log.w("fetchSilver", "Rates feed unavailable; scraping on-device")
     val html = fetchHtml(SILVER_URL)
     val primary = if (html != null) parseSilverPage(html) else null
     if (primary != null) return primary

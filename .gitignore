@@ -19,3 +19,7 @@ keystore.properties
 *.jks
 *.keystore
 *.pem
+
+# Python bytecode from tools/
+__pycache__/
+*.pyc

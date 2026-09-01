@@ -1,0 +1,132 @@
+{
+ "schema": 1,
+ "generatedAt": 1788249581,
+ "generatedAtIso": "2026-09-01T07:59:41Z",
+ "gold": {
+  "source": "keralagold.com",
+  "periodLabel": "Month",
+  "rate": 14385,
+  "date": "1-Sep-26",
+  "session": null,
+  "change": 15,
+  "history": [
+   {
+    "date": "31-Aug-26",
+    "rate": 14370,
+    "session": null
+   },
+   {
+    "date": "1-Sep-26",
+    "rate": 14385,
+    "session": null
+   }
+  ]
+ },
+ "silver": {
+  "source": "goodreturns.in",
+  "periodLabel": "10-Day",
+  "perKg": 255000,
+  "date": "1-Sep-26",
+  "change": -5000,
+  "history": [
+   {
+    "date": "23-Aug-26",
+    "rate": 270000
+   },
+   {
+    "date": "24-Aug-26",
+    "rate": 275000
+   },
+   {
+    "date": "25-Aug-26",
+    "rate": 265000
+   },
+   {
+    "date": "26-Aug-26",
+    "rate": 265000
+   },
+   {
+    "date": "27-Aug-26",
+    "rate": 265000
+   },
+   {
+    "date": "28-Aug-26",
+    "rate": 265000
+   },
+   {
+    "date": "29-Aug-26",
+    "rate": 260000
+   },
+   {
+    "date": "30-Aug-26",
+    "rate": 260000
+   },
+   {
+    "date": "31-Aug-26",
+    "rate": 260000
+   },
+   {
+    "date": "1-Sep-26",
+    "rate": 255000
+   }
+  ],
+  "months": [
+   {
+    "label": "August 2026",
+    "open": 235000,
+    "close": 260000,
+    "high": 275000,
+    "low": 235000,
+    "trendPct": 10.64
+   },
+   {
+    "label": "July 2026",
+    "open": 245000,
+    "close": 235000,
+    "high": 260000,
+    "low": 235000,
+    "trendPct": -4.08
+   },
+   {
+    "label": "June 2026",
+    "open": 290000,
+    "close": 245000,
+    "high": 290000,
+    "low": 230000,
+    "trendPct": -15.52
+   },
+   {
+    "label": "May 2026",
+    "open": 265000,
+    "close": 290000,
+    "high": 320000,
+    "low": 265000,
+    "trendPct": 9.43
+   },
+   {
+    "label": "April 2026",
+    "open": 265000,
+    "close": 270000,
+    "high": 280000,
+    "low": 255000,
+    "trendPct": 1.89
+   },
+   {
+    "label": "March 2026",
+    "open": 325000,
+    "close": 250000,
+    "high": 325000,
+    "low": 245000,
+    "trendPct": -23.08
+   },
+   {
+    "label": "February 2026",
+    "open": 320000,
+    "close": 320000,
+    "high": 320000,
+    "low": 260000,
+    "trendPct": 0.0
+   }
+  ]
+ }
+}

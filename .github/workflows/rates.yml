@@ -1,0 +1,57 @@
+name: Publish rates feed
+
+# Scrapes the rate sources here rather than on the phone, and publishes a small
+# JSON the app reads. A source changing its markup is then fixed by editing
+# tools/build_rates.py and pushing — every user picks it up on their next
+# launch, with no Play release. The app keeps its own scrapers as a fallback,
+# so a failure here degrades to the old behaviour rather than breaking anything.
+
+on:
+  schedule:
+    # Off the hour: scheduled runs queue behind everyone else's on :00.
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'tools/build_rates.py'
+      - '.github/workflows/rates.yml'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two deploys race; queue instead, and don't cancel a run that may
+# already be publishing.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      # Exits non-zero if either metal is missing from every source, which
+      # leaves the previous deploy in place rather than publishing half a feed.
+      - name: Build rates.json
+        run: python tools/build_rates.py --out public/rates.json
+
+      - name: Show what will be published
+        run: cat public/rates.json
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: public
+
+      - id: deploy
+        uses: actions/deploy-pages@v5

@@ -70,18 +70,22 @@ fun formatEpochDay(day: Long): String =
     SimpleDateFormat("dd MMM", Locale.US).format(Date(day * 86_400_000L))
 
 /**
- * Today's per-gram 22K rate.
+ * Today's per-gram 22K rate, from the first of three sources that answers.
  *
- * keralagold.com is the primary source. It was unreachable for a day and the
- * screen had nothing to fall back on, so a failure now retries against
- * goodreturns, which publishes the identical Kerala 22K figure — see
- * [fetchBackupGold]. Only a total failure of both reaches the error state.
+ * 1. [fetchFeedGold] — the CI-built feed. Preferred because a source changing
+ *    its markup is then fixed by a workflow edit, with no Play release.
+ * 2. keralagold.com, scraped on-device, as the app has always done.
+ * 3. goodreturns, which publishes the identical Kerala 22K figure.
+ *
+ * Only a total failure of all three reaches the error state.
  */
-suspend fun fetchData(): Result? =
-    fetchDaily(BASE + "kerala-gold-rate-per-gram.htm")
-        ?: fetchBackupGold().also {
-            if (it != null) Log.w("fetchData", "Primary source failed; served the backup")
-        }
+suspend fun fetchData(): Result? {
+    fetchFeedGold()?.let { return it }
+    Log.w("fetchData", "Rates feed unavailable; scraping on-device")
+    fetchDaily(BASE + "kerala-gold-rate-per-gram.htm")?.let { return it }
+    Log.w("fetchData", "Primary source failed; trying the backup")
+    return fetchBackupGold()
+}
 
 // The rate table on every daily page, e.g.
 // `<table border=1 cellspacing=0 cellpadding=2 width="280" align="center">`.

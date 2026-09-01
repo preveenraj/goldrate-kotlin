@@ -38,6 +38,24 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Drives which in-app update flow the app shows (see AppUpdates.kt):
+      # priority 5 makes it a blocking, immediate update, for a build that
+      # fixes something bad enough to be worth interrupting people over.
+      # The message goes through the environment, never straight into the
+      # shell, so it can't be used to inject commands.
+      - name: Decide in-app update priority
+        id: priority
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          if [[ "$COMMIT_MESSAGE" == *hotfix* ]]; then
+            echo "value=5" >> "$GITHUB_OUTPUT"
+            echo "hotfix detected: in-app update priority 5 (immediate)"
+          else
+            echo "value=0" >> "$GITHUB_OUTPUT"
+            echo "in-app update priority 0 (flexible)"
+          fi
+
       - name: Upload Android Release to Play Store
         uses: r0adkll/upload-google-play@v1.1.3
         with:
@@ -51,3 +69,4 @@ jobs:
           # Play Console. Switch back to `status: inProgress` plus a
           # `userFraction` for a staged release.
           status: completed
+          inAppUpdatePriority: ${{ steps.priority.outputs.value }}
