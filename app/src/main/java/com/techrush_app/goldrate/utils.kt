@@ -65,6 +65,31 @@ fun epochDay(dateString: String): Long? = try {
     null
 }
 
+/** Today's date in the same "5-Sep-26" form the sources publish. */
+fun todayRateDate(): String = SimpleDateFormat("dd-MMM-yy", Locale.US).format(Date())
+
+/** True if a scraped date is today's. An unparseable date is never today. */
+fun isRateDateToday(dateString: String): Boolean {
+    val day = epochDay(dateString) ?: return false
+    return day == epochDay(todayRateDate())
+}
+
+/**
+ * Chooses between a feed reading and a freshly scraped one, for when the feed
+ * was not dated today.
+ *
+ * The scrape only wins if it is strictly newer. On a Sunday or a holiday no
+ * source has moved and both carry the same older date; the feed is then the
+ * better of the two, because it carries the fuller history the chart draws.
+ */
+internal fun <T : Any> preferNewer(feed: T?, scraped: T?, dateOf: (T) -> String): T? {
+    if (feed == null) return scraped
+    if (scraped == null) return feed
+    val feedDay = epochDay(dateOf(feed)) ?: return scraped
+    val scrapedDay = epochDay(dateOf(scraped)) ?: return feed
+    return if (scrapedDay > feedDay) scraped else feed
+}
+
 /** Formats a whole-day epoch count back into a compact "26 Jun" label. */
 fun formatEpochDay(day: Long): String =
     SimpleDateFormat("dd MMM", Locale.US).format(Date(day * 86_400_000L))
@@ -78,13 +103,29 @@ fun formatEpochDay(day: Long): String =
  * 3. goodreturns, which publishes the identical Kerala 22K figure.
  *
  * Only a total failure of all three reaches the error state.
+ *
+ * The feed short-circuits the rest only when it is dated *today*. A feed that
+ * is freshly generated but still carrying yesterday's rate — the publisher ran
+ * before the sources had posted the day's figure — used to be trusted on its
+ * generation time alone, which pinned the screen to yesterday for as long as
+ * it took the next publish to land, with refreshing powerless to help. So a
+ * stale feed now falls through to the scrapers, and the newer of the two
+ * readings wins.
  */
 suspend fun fetchData(): Result? {
-    fetchFeedGold()?.let { return it }
-    Log.w("fetchData", "Rates feed unavailable; scraping on-device")
-    fetchDaily(BASE + "kerala-gold-rate-per-gram.htm")?.let { return it }
-    Log.w("fetchData", "Primary source failed; trying the backup")
-    return fetchBackupGold()
+    val feed = fetchFeedGold()
+    if (feed != null && isRateDateToday(feed.date)) return feed
+    if (feed == null) {
+        Log.w("fetchData", "Rates feed unavailable; scraping on-device")
+    } else {
+        Log.w("fetchData", "Feed is dated ${feed.date}, not today; scraping to see if a source has moved on")
+    }
+    val scraped = fetchDaily(BASE + "kerala-gold-rate-per-gram.htm")
+        ?: run {
+            Log.w("fetchData", "Primary source failed; trying the backup")
+            fetchBackupGold()
+        }
+    return preferNewer(feed, scraped) { it.date }
 }
 
 // The rate table on every daily page, e.g.

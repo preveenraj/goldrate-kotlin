@@ -30,9 +30,14 @@ private val BACKUP_SILVER_TAG_REGEX = Regex("<[^>]+>")
 private val BACKUP_SILVER_RUPEE_REGEX = Regex("""₹\s*([\d,]+)""")
 private val PER_KG_ROW_REGEX = Regex("""\b1\s*kg\b""", RegexOption.IGNORE_CASE)
 private val PER_GRAM_ROW_REGEX = Regex("""\b1\s*gram\b""", RegexOption.IGNORE_CASE)
-// "Updated on 01 Sep 2026", printed above the rate.
+// The stamp printed above the rate. The page writes it "Updated On - 01 Sep
+// 2026" — capital O, an en dash or hyphen between — while a bare "Updated on"
+// label sits earlier in the document with its date in a sibling element. Only
+// the stamp is followed by a digit, so the first match is the right one.
+// The month stays case-sensitive: it is used to build the date string the rest
+// of the app parses, and "sep" would not survive that round trip.
 private val UPDATED_ON_REGEX =
-    Regex("""Updated on\s+(\d{1,2})\s+([A-Z][a-z]{2})[a-z]*\s+(\d{4})""")
+    Regex("""Updated\s+[Oo]n\s*[-\u2013\u2014:]?\s*(\d{1,2})\s+([A-Z][a-z]{2})[a-z]*\s+(\d{4})""")
 
 private fun decodeBackupSilverEntities(html: String): String = html
     .replace("&#x20b9;", "₹")

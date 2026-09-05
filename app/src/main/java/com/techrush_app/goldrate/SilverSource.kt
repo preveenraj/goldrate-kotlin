@@ -93,17 +93,26 @@ private fun normaliseDate(match: MatchResult): String {
  * month-by-month movement. Returns null if the page can't be fetched or the
  * ten-day table can't be found, so a layout change degrades to the error state
  * instead of showing invented numbers.
+ *
+ * As with gold, the feed short-circuits the scrapers only when it is dated
+ * today; a feed still carrying yesterday's rate falls through to them and the
+ * newer of the two readings wins. See [fetchData].
  */
 suspend fun fetchSilver(): SilverResult? {
-    fetchFeedSilver()?.let { return it }
-    Log.w("fetchSilver", "Rates feed unavailable; scraping on-device")
-    val html = fetchHtml(SILVER_URL)
-    val primary = if (html != null) parseSilverPage(html) else null
-    if (primary != null) return primary
-    // One host shouldn't be able to empty the tab — see [fetchBackupSilver].
-    return fetchBackupSilver().also {
-        if (it != null) Log.w("fetchSilver", "Primary source failed; served the backup")
+    val feed = fetchFeedSilver()
+    if (feed != null && isRateDateToday(feed.date)) return feed
+    if (feed == null) {
+        Log.w("fetchSilver", "Rates feed unavailable; scraping on-device")
+    } else {
+        Log.w("fetchSilver", "Feed is dated ${feed.date}, not today; scraping to see if a source has moved on")
     }
+    val html = fetchHtml(SILVER_URL)
+    // One host shouldn't be able to empty the tab — see [fetchBackupSilver].
+    val scraped = (if (html != null) parseSilverPage(html) else null)
+        ?: fetchBackupSilver().also {
+            if (it != null) Log.w("fetchSilver", "Primary source failed; served the backup")
+        }
+    return preferNewer(feed, scraped) { it.date }
 }
 
 /**

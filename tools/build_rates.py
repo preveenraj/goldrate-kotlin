@@ -19,7 +19,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 SCHEMA = 1
 
@@ -254,7 +254,13 @@ def parse_goodreturns_silver(html):
 
 # --- silver: bankbazaar.com (backup) --------------------------------------
 
-BB_UPDATED = re.compile(r"Updated on\s+(\d{1,2})\s+([A-Z][a-z]{2})[a-z]*\s+(\d{4})")
+# The page writes the stamp "Updated On - 01 Sep 2026"; a bare "Updated on"
+# label appears earlier with its date in a sibling element. Only the stamp is
+# followed by a digit, so the first match is the right one. The month stays
+# case-sensitive because it is used to build the date string verbatim.
+BB_UPDATED = re.compile(
+    r"Updated\s+[Oo]n\s*[-\u2013\u2014:]?\s*(\d{1,2})\s+([A-Z][a-z]{2})[a-z]*\s+(\d{4})"
+)
 BB_PER_KG = re.compile(r"\b1\s*kg\b", re.I)
 BB_PER_GRAM = re.compile(r"\b1\s*gram\b", re.I)
 
@@ -317,9 +323,37 @@ def parse_bankbazaar_silver(html):
 
 # --- assembly -------------------------------------------------------------
 
+# Kerala rates roll over on the Indian calendar day, not on UTC's. The workflow
+# runs on UTC runners, so every "is this today's rate?" question is asked in IST.
+IST = timezone(timedelta(hours=5, minutes=30))
+
+
+def parse_rate_date(value):
+    """Parses a scraped "5-Sep-26" (or "05-Sep-26") into a date, or None."""
+    try:
+        return datetime.strptime(value, "%d-%b-%y").date()
+    except (TypeError, ValueError):
+        return None
+
+
+def today_ist():
+    return datetime.now(IST).date()
+
+
 def first_of(label, candidates):
     """Runs each (name, url, parser) in order and returns the first that yields
-    data, so the feed itself carries the same fallback chain as the app."""
+    *today's* data, so the feed itself carries the same fallback chain as the app.
+
+    A source that answers with an older date is not an answer: the sources
+    publish the day's rate at different times, and a morning run would otherwise
+    take yesterday's figure from the first source and never ask the second one
+    that already has today's. Such a reading is held aside and the next source
+    is tried; the newest of them is published only if no source has today,
+    which is the honest result on a Sunday or a holiday.
+    """
+    today = today_ist()
+    best = None
+    best_date = None
     for name, url, parser in candidates:
         log(f"{label}: trying {name}")
         html = fetch(url)
@@ -330,11 +364,20 @@ def first_of(label, candidates):
         except Exception as exc:  # noqa: BLE001 - a broken parser is a failed source
             log(f"  {name} parser raised: {exc}")
             continue
-        if parsed:
-            log(f"  {name} ok: {parsed.get('rate') or parsed.get('perKg')} on {parsed['date']}")
+        if not parsed:
+            log(f"  {name} returned nothing")
+            continue
+        log(f"  {name} ok: {parsed.get('rate') or parsed.get('perKg')} on {parsed['date']}")
+        parsed_date = parse_rate_date(parsed["date"])
+        if parsed_date == today:
             return parsed
-        log(f"  {name} returned nothing")
-    return None
+        log(f"  {name} is dated {parsed['date']}, not today ({today}); trying the next source")
+        # An unparseable date sorts below any real one but still beats nothing.
+        if best is None or (parsed_date is not None and (best_date is None or parsed_date > best_date)):
+            best, best_date = parsed, parsed_date
+    if best is not None:
+        log(f"{label}: no source has today; publishing {best['source']} dated {best['date']}")
+    return best
 
 
 def main():
